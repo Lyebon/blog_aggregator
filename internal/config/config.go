@@ -1,72 +1,71 @@
 package config
 
 import (
-	"os"
 	"encoding/json"
-	"log"
-	"strings"
+	"os"
+	"path/filepath"
 )
+
+const configFileName = ".gatorconfig.json"
 
 type Config struct{
 	DbURL 			string `json:"db_url"`
 	CurrentUserName	string `json:"current_user_name"`
 }
 
-func basePath()(string, error){
+func (cfg *Config) SetUser(userName string) error {
+	cfg.CurrentUserName = userName
+	return write(*cfg)
+}
+
+func getConfigFilePath()(string, error){
 	home, err := os.UserHomeDir()
 	if err != nil{
-		log.Fatal(err)
+		return "", err
 	}
-	return home, nil
+	fullPath := filepath.Join(home, configFileName)
+	return fullPath, nil
 }
 
-func ReadConfig()Config{
-	home, err := basePath()
+func Read()(Config, error){
+	fullPath, err := getConfigFilePath()
 	if err != nil{
-		log.Fatal(err)
+		return Config{}, err
 	}
 
-	path := home + "/.gatorconfig.json"
-	file, err := os.ReadFile(path)
+	file, err := os.Open(fullPath)
 	if err != nil{
-		log.Fatal(err)
+		return Config{}, err
 	}
-	var cfg Config
-	err = json.Unmarshal(file, &cfg)
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	cfg := Config{}
+	err = decoder.Decode(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		return Config{}, err
 	}
-	cfg = ReadUser(cfg)
-	return cfg
+
+	return cfg, nil
 }
 
-func ReadUser(cfg Config) Config{
-	home, err := basePath()
-	if err != nil{
-		log.Fatal(err)
+func write(cfg Config) error {
+	fullPath, err := getConfigFilePath()
+	if err != nil {
+		return err
 	}
 
-	options := strings.SplitAfter(home, "/")
-	cfg.CurrentUserName = options[len(options)-1]
-	return cfg
-}
-
-func WriteConfig(cfg Config) error{
-	home, err := basePath()
-	if err != nil{
-		log.Fatal(err)
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return err
 	}
-	
-	path := home + "/.gatorconfig.json"
+	defer file.Close()
 
-	file, err := json.Marshal(cfg)
-	if err != nil{
-		log.Fatal(err)
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(cfg)
+	if err != nil {
+		return err
 	}
 
-	err = os.WriteFile(path, file, 0666)
-	if err != nil{
-		log.Fatal(err)
-	}
 	return nil
 }
