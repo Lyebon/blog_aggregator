@@ -1,13 +1,12 @@
 package main
 
 import (
-	"log"
 	"fmt"
 )
 
 func handlerLogin(s *state, cmd command) error{
-	if cmd.args == [] {
-		return log.Fatalf("error reading config: %v", err)
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("error: not username pass")
 	}
 	err := s.cfg.SetUser(cmd.args[0])
 	if err != nil {
